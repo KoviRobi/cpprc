@@ -3,6 +3,7 @@
 #include <bit>
 #include <cstdint>
 #include <limits>
+#include <ranges>
 
 namespace Crc
 {
@@ -64,11 +65,39 @@ namespace Crc
             Lsb,
         };
 
-        template<uint8_t width, Uint<width> polynomial, Bitorder bitorder>
+        template<
+            uint8_t width,
+            Uint<width> polynomial,
+            Uint<width> initial,
+            Bitorder bitorder,
+            Uint<width> xorout
+        >
         struct Impl
         {
-            static constexpr auto poly = bitorder == Msb ? polynomial : bitswap(polynomial);
-            Uint<width> checksum;
+            static constexpr auto poly = bitorder == Msb ? polynomial : bitswap<width>(polynomial);
+            Uint<width> checksum = initial;
+
+            // The simple bitwise CRC implementation
+            template<std::ranges::input_range Range>
+            constexpr Impl & bitwise(Range && range)
+            {
+                for (uint8_t byte : range)
+                {
+                    constexpr uint8_t digits = std::numeric_limits<Uint<width>>::digits;
+                    // Shift byte into the MSbit position
+                    checksum ^= byte << (digits - 8);
+                    constexpr auto  msb = bitswap<width>(1);
+                    for (unsigned i = 0; i < 8; ++i)
+                    {
+                        checksum = (checksum << 1) ^ ((checksum & msb) ? poly : 0);
+                    }
+                }
+                return *this;
+            }
+
+            constexpr operator Uint<width>() const { return checksum ^ xorout; }
         };
     };
+
+    using Bzip2 = Detail::Impl<32, 0x04C11DB7, ~0u, Detail::Msb, ~0u>;
 };
