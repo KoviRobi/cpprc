@@ -27,3 +27,4 @@ static_assert(bitswap<32>(0x1234'5678) == 0x1E6A'2C48);
 
 static_assert(Crc::Bzip2{}.bitwise("123456789"sv) == 0xFC891918);
 static_assert(Crc::Pkzip{}.bitwise("123456789"sv) == 0xCBF43926);
+static_assert(Crc::Cksum{}.bitwise("123456789"sv) == 0x765e7680);

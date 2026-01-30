@@ -111,7 +111,10 @@ namespace Crc
         };
     };
 
-    using Bzip2 = Detail::Impl<32, 0x04C11DB7, ~0u, Detail::Msb, ~0u>;
+    using enum Detail::Bitorder;
+
+    using Bzip2 = Detail::Impl<32, 0x04C11DB7, ~0u, Msb, ~0u>;
     // The classic one used in Ethernet and zlib
-    using Pkzip = Detail::Impl<32, 0x04C11DB7, ~0u, Detail::Lsb, ~0u>;
+    using Pkzip = Detail::Impl<32, 0x04C11DB7, ~0u, Lsb, ~0u>;
+    using Cksum = Detail::Impl<32, 0x04C11DB7, 0, Msb, ~0u>;
 };
