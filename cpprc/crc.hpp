@@ -83,13 +83,25 @@ namespace Crc
             {
                 for (uint8_t byte : range)
                 {
-                    constexpr uint8_t digits = std::numeric_limits<Uint<width>>::digits;
-                    // Shift byte into the MSbit position
-                    checksum ^= byte << (digits - 8);
-                    constexpr auto  msb = bitswap<width>(1);
-                    for (unsigned i = 0; i < 8; ++i)
+                    if constexpr (bitorder == Msb)
                     {
-                        checksum = (checksum << 1) ^ ((checksum & msb) ? poly : 0);
+                        constexpr uint8_t digits = std::numeric_limits<Uint<width>>::digits;
+                        // Shift byte into the MSbit position
+                        checksum ^= byte << (digits - 8);
+                        constexpr auto  msb = bitswap<width>(1);
+                        for (unsigned i = 0; i < 8; ++i)
+                        {
+                            checksum = (checksum << 1) ^ ((checksum & msb) ? poly : 0);
+                        }
+                    }
+                    else
+                    {
+                        checksum ^= byte;
+                        constexpr Uint<width>  lsb = 1;
+                        for (unsigned i = 0; i < 8; ++i)
+                        {
+                            checksum = (checksum >> 1) ^ ((checksum & lsb) ? poly : 0);
+                        }
                     }
                 }
                 return *this;
@@ -100,4 +112,6 @@ namespace Crc
     };
 
     using Bzip2 = Detail::Impl<32, 0x04C11DB7, ~0u, Detail::Msb, ~0u>;
+    // The classic one used in Ethernet and zlib
+    using Pkzip = Detail::Impl<32, 0x04C11DB7, ~0u, Detail::Lsb, ~0u>;
 };
