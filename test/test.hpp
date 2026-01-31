@@ -35,6 +35,12 @@ static_assert(Crc::Cksum{}.bitwise("123456789"sv) == 0x765e7680);
 
 static_assert(Crc::Bzip2{}.tabled("123456789"sv) == 0xFC891918);
 static_assert(Crc::Pkzip{}.tabled("123456789"sv) == 0xCBF43926);
+// Check one byte at a time, mixed method
+static_assert(Crc::Pkzip{}
+              .tabled("1"sv).bitwise("2"sv)
+              .tabled("34"sv).bitwise("56"sv)
+              .tabled("7"sv).bitwise("8"sv)
+              .tabled("9"sv) == 0xCBF43926);
 
 // CRC-64
 static_assert(Crc::Ecma182{}.bitwise("123456789"sv) == 0x6C40DF5F0B497347);
