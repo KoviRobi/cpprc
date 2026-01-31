@@ -1,2 +1,8 @@
 build/
 .cache/
+*.gch
+*.orig
+*~
+\#*\#
+reveng.hpp
+compile_commands.json
