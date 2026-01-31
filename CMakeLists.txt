@@ -7,3 +7,4 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_library(test SHARED test/test.cpp)
 target_include_directories(test PRIVATE .)
+target_compile_options(test PRIVATE -Wall -Wextra)

@@ -51,6 +51,9 @@ namespace Crc
         template<uint8_t N>
         constexpr Uint<N> bitswap(Uint<N> value)
         {
+            // Handle non power-of-2 numbers, by bitswapping using the
+            // nearest power-of-2 larger or equal to it, then shifting
+            // right
             constexpr uint8_t digits = std::numeric_limits<Uint<N>>::digits;
             for (uint8_t digit = digits >> 1; digit != 0; digit = digit >> 1)
             {
@@ -58,28 +61,34 @@ namespace Crc
                 const Uint<N> lmask = rmask << digit;
                 value = ((value & lmask) >> digit) | ((value & rmask) << digit);
             }
-            return value;
+            return value >> (digits - N);
         }
 
         // Cyclic Redundancy Check (table driven/Sarwate algorithm) ===========
 
+        // Also corresponds to the refin/refout parameters of CRC RevEng,
+        // hence Msb=false and Lsb=true
         enum Bitorder
         {
-            Msb,
-            Lsb,
+            Msb = false,
+            Lsb = true,
         };
 
         template<
             uint8_t width,
             Uint<width> polynomial,
             Uint<width> initial,
-            Bitorder bitorder,
+            Bitorder inorder,
+            Bitorder outorder,
             Uint<width> xorout
         >
         struct Impl
         {
-            static constexpr auto poly = bitorder == Msb ? polynomial : bitswap<width>(polynomial);
-            Uint<width> checksum = initial;
+            static constexpr auto poly = (inorder == Msb) ? polynomial : bitswap<width>(polynomial);
+            static constexpr Uint<width> msb = Uint<width>(1) << (width - 1);
+            static constexpr Uint<width> lsb = 1;
+            static constexpr Uint<width> mask = (msb << 1) - 1;
+            Uint<width> checksum = (inorder == Msb) ? initial : bitswap<width>(initial);
 
             // The simple bitwise CRC implementation
             template<std::ranges::input_range Range>
@@ -87,12 +96,10 @@ namespace Crc
             {
                 for (uint8_t byte : range)
                 {
-                    if constexpr (bitorder == Msb)
+                    if constexpr (inorder == Msb)
                     {
-                        constexpr uint8_t digits = std::numeric_limits<Uint<width>>::digits;
                         // Shift byte into the MSbit position
-                        checksum ^= Uint<width>(byte) << (digits - 8);
-                        constexpr auto msb = bitswap<width>(1);
+                        checksum ^= Uint<width>(byte) << (width - 8);
                         for (unsigned i = 0; i < 8; ++i)
                         {
                             checksum = (checksum << 1) ^ ((checksum & msb) ? poly : 0);
@@ -101,7 +108,6 @@ namespace Crc
                     else
                     {
                         checksum ^= byte;
-                        constexpr Uint<width>  lsb = 1;
                         for (unsigned i = 0; i < 8; ++i)
                         {
                             checksum = (checksum >> 1) ^ ((checksum & lsb) ? poly : 0);
@@ -128,9 +134,8 @@ namespace Crc
                 // can just compute i = 0x01, 0x02, 0x04, 0x08, 0x10,
                 // and so on; and for each i, fill in the rest using
                 // the previously computed values.
-                if constexpr (bitorder == Msb)
+                if constexpr (inorder == Msb)
                 {
-                    const Uint<width> msb = bitswap<width>(1);
                     Uint<width> checksum = msb;
                     for (unsigned i = 0x01; i != 0x100; i = i << 1)
                     {
@@ -143,7 +148,6 @@ namespace Crc
                 }
                 else
                 {
-                    const Uint<width> lsb = 1;
                     Uint<width> checksum = lsb;
                     for (unsigned i = 0x80; i != 0x00; i = i >> 1)
                     {
@@ -165,10 +169,9 @@ namespace Crc
             {
                 for (uint8_t byte : range)
                 {
-                    if constexpr (bitorder == Msb)
+                    if constexpr (inorder == Msb)
                     {
-                        const uint8_t digits = std::numeric_limits<Uint<width>>::digits;
-                        const auto leftmost = static_cast<uint8_t>(checksum >> (digits - 8));
+                        const auto leftmost = static_cast<uint8_t>(checksum >> (width - 8));
                         const uint8_t lookup = byte ^ leftmost;
                         checksum = (checksum << 8) ^ table[lookup];
                     }
@@ -182,7 +185,12 @@ namespace Crc
                 return *this;
             }
 
-            constexpr operator Uint<width>() const { return checksum ^ xorout; }
+            constexpr operator Uint<width>() const
+            {
+                const Uint<width> value = checksum ^ xorout;
+                const Uint<width> out = (inorder == outorder) ? value : bitswap<width>(value);
+                return out & mask;
+            }
         };
     };
 
@@ -191,13 +199,13 @@ namespace Crc
     // With huge thanks to https://reveng.sourceforge.io/crc-catalogue/
 
     // CRC-32
-    using Bzip2 = Detail::Impl<32, 0x04C11DB7, ~0u, Msb, ~0u>;
+    using Bzip2 = Detail::Impl<32, 0x04C11DB7, ~0u, Msb, Msb, ~0u>;
     // The classic one used in Ethernet and zlib
-    using Pkzip = Detail::Impl<32, 0x04C11DB7, ~0u, Lsb, ~0u>;
-    using Cksum = Detail::Impl<32, 0x04C11DB7, 0, Msb, ~0u>;
+    using Pkzip = Detail::Impl<32, 0x04C11DB7, ~0u, Lsb, Lsb, ~0u>;
+    using Cksum = Detail::Impl<32, 0x04C11DB7, 0, Msb, Msb, ~0u>;
 
     // CRC-64
-    using Ecma182 = Detail::Impl<64, 0x42F0E1EBA9EA3693, 0, Msb, 0>;
+    using Ecma182 = Detail::Impl<64, 0x42F0E1EBA9EA3693, 0, Msb, Msb, 0>;
     // Often misidentified as "ECMA" apparently
-    using Crc64Xz = Detail::Impl<64, 0x42F0E1EBA9EA3693, ~0ull, Lsb, ~0ull>;
+    using Crc64Xz = Detail::Impl<64, 0x42F0E1EBA9EA3693, ~0ull, Lsb, Lsb, ~0ull>;
 };

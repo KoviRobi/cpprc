@@ -22,6 +22,9 @@ static_assert(bitswapMask<16>(4) == 0x0F0F);
 static_assert(bitswapMask<16>(2) == 0x3333);
 static_assert(bitswapMask<16>(1) == 0x5555);
 
+static_assert(bitswap<4>(0x1) == 0x8);
+static_assert(bitswap<8>(0x01) == 0x80);
+static_assert(bitswap<12>(0x001) == 0x800);
 static_assert(bitswap<32>(0x0000'0001) == 0x8000'0000);
 static_assert(bitswap<32>(0x1234'5678) == 0x1E6A'2C48);
 
