@@ -102,6 +102,8 @@ namespace Crc
                         checksum ^= Uint<width>(byte) << (width - 8);
                         for (unsigned i = 0; i < 8; ++i)
                         {
+                            // This is the core of CRC, XORing the
+                            // polynomial if the bit is set
                             checksum = (checksum << 1) ^ ((checksum & msb) ? poly : 0);
                         }
                     }
@@ -140,6 +142,8 @@ namespace Crc
                     for (unsigned i = 0x01; i != 0x100; i = i << 1)
                     {
                         checksum = (checksum << 1) ^ ((checksum & msb) ? poly : 0);
+                        // For e.g. i=0x04 we have j=0 to j=3, giving
+                        // us i+j=4 to i+j=7
                         for (unsigned j = 0; j < i; ++j)
                         {
                             table[i + j] = checksum ^ table[j];
@@ -171,6 +175,9 @@ namespace Crc
                 {
                     if constexpr (inorder == Msb)
                     {
+                        // XORing a byte at a time, using the checksum XOR
+                        // byte as the key into the table which has cached
+                        // the `bit-set ? poly : 0` for a byte at a time
                         const auto leftmost = static_cast<uint8_t>(checksum >> (width - 8));
                         const uint8_t lookup = byte ^ leftmost;
                         checksum = (checksum << 8) ^ table[lookup];
@@ -189,6 +196,8 @@ namespace Crc
             {
                 const Uint<width> value = checksum ^ xorout;
                 const Uint<width> out = (inorder == outorder) ? value : bitswap<width>(value);
+                // For non-exact widths (i.e. not 8/16/32/64), mask off
+                // the overflow
                 return out & mask;
             }
         };
