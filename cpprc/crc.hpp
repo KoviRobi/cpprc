@@ -5,6 +5,9 @@
 #include <limits>
 #include <ranges>
 
+// With help from
+// https://en.wikipedia.org/w/index.php?title=Computation_of_cyclic_redundancy_checks&oldid=1334498958
+
 namespace Crc
 {
     namespace Detail
@@ -33,7 +36,7 @@ namespace Crc
         template<uint8_t N>
         constexpr Uint<N> bitswapMask(uint8_t digits)
         {
-            Uint<N> mask = (1 << digits) - 1;
+            Uint<N> mask = (Uint<N>(1) << digits) - 1;
             Uint<N> oldMask = 0;
             while (mask != oldMask)
             {
@@ -87,7 +90,7 @@ namespace Crc
                     {
                         constexpr uint8_t digits = std::numeric_limits<Uint<width>>::digits;
                         // Shift byte into the MSbit position
-                        checksum ^= byte << (digits - 8);
+                        checksum ^= Uint<width>(byte) << (digits - 8);
                         constexpr auto  msb = bitswap<width>(1);
                         for (unsigned i = 0; i < 8; ++i)
                         {
@@ -113,8 +116,16 @@ namespace Crc
 
     using enum Detail::Bitorder;
 
+    // With huge thanks to https://reveng.sourceforge.io/crc-catalogue/
+
+    // CRC-32
     using Bzip2 = Detail::Impl<32, 0x04C11DB7, ~0u, Msb, ~0u>;
     // The classic one used in Ethernet and zlib
     using Pkzip = Detail::Impl<32, 0x04C11DB7, ~0u, Lsb, ~0u>;
     using Cksum = Detail::Impl<32, 0x04C11DB7, 0, Msb, ~0u>;
+
+    // CRC-64
+    using Ecma182 = Detail::Impl<64, 0x42F0E1EBA9EA3693, 0, Msb, 0>;
+    // Often misidentified as "ECMA" apparently
+    using Crc64Xz = Detail::Impl<64, 0x42F0E1EBA9EA3693, ~0ull, Lsb, ~0ull>;
 };

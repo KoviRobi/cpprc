@@ -25,6 +25,11 @@ static_assert(bitswapMask<16>(1) == 0x5555);
 static_assert(bitswap<32>(0x0000'0001) == 0x8000'0000);
 static_assert(bitswap<32>(0x1234'5678) == 0x1E6A'2C48);
 
+// CRC-32
 static_assert(Crc::Bzip2{}.bitwise("123456789"sv) == 0xFC891918);
 static_assert(Crc::Pkzip{}.bitwise("123456789"sv) == 0xCBF43926);
 static_assert(Crc::Cksum{}.bitwise("123456789"sv) == 0x765e7680);
+
+// CRC-64
+static_assert(Crc::Ecma182{}.bitwise("123456789"sv) == 0x6C40DF5F0B497347);
+static_assert(Crc::Crc64Xz{}.bitwise("123456789"sv) == 0x995DC9BBDF1939FA);
