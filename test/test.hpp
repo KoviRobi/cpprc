@@ -30,6 +30,12 @@ static_assert(Crc::Bzip2{}.bitwise("123456789"sv) == 0xFC891918);
 static_assert(Crc::Pkzip{}.bitwise("123456789"sv) == 0xCBF43926);
 static_assert(Crc::Cksum{}.bitwise("123456789"sv) == 0x765e7680);
 
+static_assert(Crc::Bzip2{}.tabled("123456789"sv) == 0xFC891918);
+static_assert(Crc::Pkzip{}.tabled("123456789"sv) == 0xCBF43926);
+
 // CRC-64
 static_assert(Crc::Ecma182{}.bitwise("123456789"sv) == 0x6C40DF5F0B497347);
 static_assert(Crc::Crc64Xz{}.bitwise("123456789"sv) == 0x995DC9BBDF1939FA);
+
+static_assert(Crc::Ecma182{}.tabled("123456789"sv) == 0x6C40DF5F0B497347);
+static_assert(Crc::Crc64Xz{}.tabled("123456789"sv) == 0x995DC9BBDF1939FA);

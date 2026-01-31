@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <bit>
 #include <cstdint>
 #include <limits>
@@ -91,7 +92,7 @@ namespace Crc
                         constexpr uint8_t digits = std::numeric_limits<Uint<width>>::digits;
                         // Shift byte into the MSbit position
                         checksum ^= Uint<width>(byte) << (digits - 8);
-                        constexpr auto  msb = bitswap<width>(1);
+                        constexpr auto msb = bitswap<width>(1);
                         for (unsigned i = 0; i < 8; ++i)
                         {
                             checksum = (checksum << 1) ^ ((checksum & msb) ? poly : 0);
@@ -105,6 +106,77 @@ namespace Crc
                         {
                             checksum = (checksum >> 1) ^ ((checksum & lsb) ? poly : 0);
                         }
+                    }
+                }
+                return *this;
+            }
+
+            // The table-based implementation using the Sarwate algorithm
+            static constexpr std::array<Uint<width>, 256> table = []
+            {
+                std::array<Uint<width>, 256> table = {0};
+                // The table is computed as
+                //
+                // table[0] = 0
+                // table[1] = CRC of 0x01 (LSbit) or 0x80 (MSbit)
+                // table[2] = CRC of 0x02 (LSbit) or 0x40 (MSbit)
+                // table[3] = CRC of 0x03 (LSbit) or 0x60 (MSbit)
+                // ...
+                //
+                // We could just use the bitwise function to do this,
+                // but note that table[3] = table[1] ^ table[2], so we
+                // can just compute i = 0x01, 0x02, 0x04, 0x08, 0x10,
+                // and so on; and for each i, fill in the rest using
+                // the previously computed values.
+                if constexpr (bitorder == Msb)
+                {
+                    const Uint<width> msb = bitswap<width>(1);
+                    Uint<width> checksum = msb;
+                    for (unsigned i = 0x01; i != 0x100; i = i << 1)
+                    {
+                        checksum = (checksum << 1) ^ ((checksum & msb) ? poly : 0);
+                        for (unsigned j = 0; j < i; ++j)
+                        {
+                            table[i + j] = checksum ^ table[j];
+                        }
+                    }
+                }
+                else
+                {
+                    const Uint<width> lsb = 1;
+                    Uint<width> checksum = lsb;
+                    for (unsigned i = 0x80; i != 0x00; i = i >> 1)
+                    {
+                        checksum = (checksum >> 1) ^ ((checksum & lsb) ? poly : 0);
+                        // This is like the 1,...,i above, except using
+                        // the bits to the right of i
+                        unsigned previousBit = i << 1;
+                        for (unsigned j = 0; j < 256; j += previousBit)
+                        {
+                            table[i + j] = checksum ^ table[j];
+                        }
+                    }
+                }
+                return table;
+            }();
+
+            template<std::ranges::input_range Range>
+            constexpr Impl & tabled(Range && range)
+            {
+                for (uint8_t byte : range)
+                {
+                    if constexpr (bitorder == Msb)
+                    {
+                        const uint8_t digits = std::numeric_limits<Uint<width>>::digits;
+                        const auto leftmost = static_cast<uint8_t>(checksum >> (digits - 8));
+                        const uint8_t lookup = byte ^ leftmost;
+                        checksum = (checksum << 8) ^ table[lookup];
+                    }
+                    else
+                    {
+                        const auto rightmost = static_cast<uint8_t>(checksum);
+                        const uint8_t lookup = byte ^ rightmost;
+                        checksum = (checksum >> 8) ^ table[lookup];
                     }
                 }
                 return *this;
