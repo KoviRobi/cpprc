@@ -31,11 +31,16 @@ def main():
 
     random = Random(args.seed)
 
-    print("Running")
+    print(f"Running test against zlib.crc32 (seed={args.seed})")
     for i in range(args.count):
         try:
-            print(f"{i}/{args.count}", end="\r")
-            data = random.randbytes(random.randint(args.min, args.max))
+            length = random.randint(args.min, args.max)
+            data = random.randbytes(length)
+            nibbles = 50
+            if length < nibbles/2:
+                print(f"{i}/{args.count}\t{data.hex():{nibbles}}", end="\r")
+            else:
+                print(f"{i}/{args.count}\t{data.hex():.{nibbles}}...({len(data)}B)", end="\r")
             assert zlib.crc32(data) == libtest.crc32Pkzip(data, len(data))
         except Exception:
             print()

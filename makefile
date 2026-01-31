@@ -4,3 +4,4 @@ all:
 	cmake --build build
 	./test/test.py build/libtest.so
 	./test/mkreveng.sh
+	sh ./README.md
