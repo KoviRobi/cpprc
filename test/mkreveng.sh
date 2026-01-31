@@ -35,31 +35,35 @@ reveng -D | while read -r algo; do
         # C++ valid identifier
         id="$(echo $name | sed 's/[^0-9a-zA-Z_]/_/g')"
 
-        # Generate some other test data
-        hello="Hello, world"
-        # In hex/base16
-        helloin="$(echo -n "${hello}" | xxd -p)"
-        hellocheck="$(reveng -m "$name" -c $helloin)"
-        # reveng outputs it as bytes not integer so byteswap
-        if [ "$refout" = true ]; then
-            hellocheck="$(echo $hellocheck | tr -d '\n' | tac -r -s '[0-9a-f][0-9a-f]')"
-        fi
-        hellocheck="0x${hellocheck}ull"
-
         # Convert to Bitorder
-        refin="Bitorder($refin)"
-        refout="Bitorder($refout)"
+        inorder="Bitorder($refin)"
+        outorder="Bitorder($refout)"
         cat <<EOF >>reveng.hpp
 // $name
-using $id = Impl<$width, ${poly}ull, ${init}ull, $refin, $refout, ${xorout}ull>;
+using $id = Impl<$width, ${poly}ull, ${init}ull, $inorder, $outorder, ${xorout}ull>;
 
 static_assert($id{}.bitwise("123456789"sv) == ${check}ull, R"x($algo)x");
 static_assert($id{}.tabled ("123456789"sv) == ${check}ull, R"x($algo)x");
-static_assert($id{}.bitwise("${hello}"sv) == ${hellocheck}, R"x($algo)x");
-static_assert($id{}.tabled ("${hello}"sv) == ${hellocheck}, R"x($algo)x");
 EOF
+
+        for i in `seq 10`; do
+            # Generate some other test data
+            data="$(cat /dev/urandom | tr -dc '0-9a-zA-Z' | head -c10)"
+            hex="$(echo -n "$data" | xxd -p)"
+            check="$(reveng -m "$name" -c $hex)"
+            # reveng outputs it as bytes not integer so byteswap
+            if [ "$refout" = true ]; then
+                check="$(echo $check | tr -d '\n' | tac -r -s '[0-9a-f][0-9a-f]')"
+            fi
+            check="0x${check}ull"
+            cat <<EOF >>reveng.hpp
+static_assert($id{}.bitwise("${data}"sv) == ${check}, R"x($algo)x");
+static_assert($id{}.tabled ("${data}"sv) == ${check}, R"x($algo)x");
+EOF
+        done
     fi
 done
+echo "Generating reveng.hpp done"
 
 c++ -I../ -std=c++23 reveng.hpp -c
 echo "RevEng test OK"
