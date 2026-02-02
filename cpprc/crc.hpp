@@ -131,9 +131,9 @@ namespace Crc
                 // The table is computed as
                 //
                 // table[0] = 0
-                // table[1] = CRC of 0x01 (LSbit) or 0x80 (MSbit)
-                // table[2] = CRC of 0x02 (LSbit) or 0x40 (MSbit)
-                // table[3] = CRC of 0x03 (LSbit) or 0x60 (MSbit)
+                // table[1] = CRC of 0x01 (MSbit) or 0x80 (LSbit)
+                // table[2] = CRC of 0x02 (MSbit) or 0x40 (LSbit)
+                // table[3] = CRC of 0x03 (MSbit) or 0x60 (LSbit)
                 // ...
                 //
                 // We could just use the bitwise function to do this,
