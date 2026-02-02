@@ -105,7 +105,7 @@ namespace Crc
                     {
                         // Shift byte into the MSbit position
                         checksum ^= Uint<width>(byte) << (width - 8);
-                        for (unsigned i = 0; i < 8; ++i)
+                        for (uint8_t bit = 0; bit < 8; ++bit)
                         {
                             // This is the core of CRC, XORing the
                             // polynomial if the bit is set
@@ -115,7 +115,7 @@ namespace Crc
                     else
                     {
                         checksum ^= byte;
-                        for (unsigned i = 0; i < 8; ++i)
+                        for (uint8_t bit = 0; bit < 8; ++bit)
                         {
                             checksum = (checksum >> 1) ^ ((checksum & lsb) ? poly : 0);
                         }
@@ -144,29 +144,43 @@ namespace Crc
                 if constexpr (inorder == Msb)
                 {
                     Uint<width> checksum = msb;
-                    for (unsigned i = 0x01; i != 0x100; i = i << 1)
+                    for (
+                        uint16_t bit = 0x01;
+                        bit != 0x100;
+                        // Cast is ok, we terminate with 0x100
+                        bit = static_cast<uint16_t>(bit << 1)
+                    )
                     {
                         checksum = (checksum << 1) ^ ((checksum & msb) ? poly : 0);
-                        // For e.g. i=0x04 we have j=0 to j=3, giving
-                        // us i+j=4 to i+j=7
-                        for (unsigned j = 0; j < i; ++j)
+                        // For e.g. bit=0x04 we have previousBit=0 to
+                        // previousBit=3, giving us bit+previousBit=4
+                        // to bit+previousBit=7
+                        for (
+                            uint8_t previousBit = 0;
+                            previousBit < bit;
+                            ++previousBit)
                         {
-                            table[i + j] = checksum ^ table[j];
+                            table[bit + previousBit] = checksum ^ table[previousBit];
                         }
                     }
                 }
                 else
                 {
                     Uint<width> checksum = lsb;
-                    for (unsigned i = 0x80; i != 0x00; i = i >> 1)
+                    for (uint8_t bit = 0x80; bit != 0x00; bit = bit >> 1)
                     {
                         checksum = (checksum >> 1) ^ ((checksum & lsb) ? poly : 0);
-                        // This is like the 1,...,i above, except using
-                        // the bits to the right of i
-                        unsigned previousBit = i << 1;
-                        for (unsigned j = 0; j < 256; j += previousBit)
+                        // This is like the 1,...,bit above, except using
+                        // the bits to the right of bit
+                        // Cast is ok, at most we have 0x100
+                        uint16_t smallestLeftOfBit = static_cast<uint16_t>(bit << 1);
+                        for (
+                            uint16_t previousBit = 0;
+                            previousBit < 256;
+                            previousBit += smallestLeftOfBit
+                        )
                         {
-                            table[i + j] = checksum ^ table[j];
+                            table[bit + previousBit] = checksum ^ table[previousBit];
                         }
                     }
                 }
