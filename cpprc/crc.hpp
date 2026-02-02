@@ -22,9 +22,11 @@ namespace Crc
         template<> struct UintN<64> { using Type = uint64_t; };
 
         // Rounds up to the nearest multiple of 8
+        // Note: Wraps to zero after 248, but that is fine as it is only
+        // called with bit_ceil which returns values up to 64.
         constexpr uint8_t roundUpTo8N(uint8_t x)
         {
-            return ((x + 7) / 8) * 8;
+            return static_cast<uint8_t>(((x + 7) / 8) * 8);
         }
 
         // Minimal uintX_t which can store up to N
@@ -37,13 +39,16 @@ namespace Crc
         template<uint8_t N>
         constexpr Uint<N> bitswapMask(uint8_t digits)
         {
-            Uint<N> mask = (Uint<N>(1) << digits) - 1;
+            // Cast is ok, value is at least 1 (no uint0_t)
+            Uint<N> mask = static_cast<Uint<N>>((Uint<N>(1) << digits) - 1);
             Uint<N> oldMask = 0;
             while (mask != oldMask)
             {
                 oldMask = mask;
                 const auto gap = mask << digits;
-                mask = mask | (gap << digits);
+                // Cast is ok, we want RHS to fall off the edge to
+                // stop changing to terminate the loop
+                mask = static_cast<Uint<N>>(mask | (gap << digits));
             }
             return mask;
         }
